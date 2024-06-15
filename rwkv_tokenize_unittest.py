@@ -4,7 +4,8 @@
 
 import os, sys, time, random
 
-print('''
+print(
+    """
 #######################################################################################################################
 
 This tokenizer is not used in any RWKV models yet. I plan to use it for the future multilang RWKV models.
@@ -30,26 +31,29 @@ mypyc rwkv_tokenizer.py
 python3 -c "import rwkv_tokenizer"
 
 #######################################################################################################################
-''')
+"""
+)
 
 ########################################################################################################
 # Tokenizer #1 (reference, naive, slow)
 ########################################################################################################
 
-class RWKV_TOKENIZER():
+
+class RWKV_TOKENIZER:
     table: list[list[list[bytes]]]
     good: list[set[int]]
     wlen: list[int]
+
     def __init__(self, file_name):
         self.idx2token = {}
-        sorted = [] # must be already sorted
+        sorted = []  # must be already sorted
         lines = open(file_name, "r", encoding="utf-8").readlines()
         for l in lines:
-            idx = int(l[:l.index(' ')])
-            x = eval(l[l.index(' '):l.rindex(' ')])
+            idx = int(l[: l.index(" ")])
+            x = eval(l[l.index(" ") : l.rindex(" ")])
             x = x.encode("utf-8") if isinstance(x, str) else x
             assert isinstance(x, bytes)
-            assert len(x) == int(l[l.rindex(' '):])
+            assert len(x) == int(l[l.rindex(" ") :])
             sorted += [x]
             self.idx2token[idx] = x
 
@@ -62,7 +66,9 @@ class RWKV_TOKENIZER():
         self.good = [set() for i in range(256)]
         self.wlen = [0 for i in range(256)]
 
-        for i in reversed(range(len(sorted))): # reverse order - match longer tokens first
+        for i in reversed(
+            range(len(sorted))
+        ):  # reverse order - match longer tokens first
             s = sorted[i]
             if len(s) >= 2:
                 s0 = int(s[0])
@@ -93,33 +99,36 @@ class RWKV_TOKENIZER():
         return tokens
 
     def decodeBytes(self, tokens):
-        return b''.join(map(lambda i: self.idx2token[i], tokens))
+        return b"".join(map(lambda i: self.idx2token[i], tokens))
 
     def encode(self, src: str):
         return self.encodeBytes(src.encode("utf-8"))
 
     def decode(self, tokens):
-        return self.decodeBytes(tokens).decode('utf-8')
+        return self.decodeBytes(tokens).decode("utf-8")
 
     def printTokens(self, tokens):
         for i in tokens:
             s = self.idx2token[i]
             try:
-                s = s.decode('utf-8')
+                s = s.decode("utf-8")
             except:
                 pass
-            print(f'{repr(s)}{i}', end=' ')
+            print(f"{repr(s)}{i}", end=" ")
             # print(repr(s), i)
         print()
+
 
 ########################################################################################################
 # Tokenizer #2 (trie, faster) https://github.com/TkskKurumi/ChatRWKV-TRIE-Tokenizer
 ########################################################################################################
 
+
 class TRIE:
     __slots__ = tuple("ch,to,values,front".split(","))
-    to:list
-    values:set
+    to: list
+    values: set
+
     def __init__(self, front=None, ch=None):
         self.ch = ch
         self.to = [None for ch in range(256)]
@@ -129,100 +138,102 @@ class TRIE:
     def __repr__(self):
         fr = self
         ret = []
-        while(fr!=None):
-            if(fr.ch!=None):
+        while fr != None:
+            if fr.ch != None:
                 ret.append(fr.ch)
             fr = fr.front
-        return "<TRIE %s %s>"%(ret[::-1], self.values)
-    
-    def add(self, key:bytes, idx:int=0, val=None):
-        if(idx == len(key)):
-            if(val is None):
+        return "<TRIE %s %s>" % (ret[::-1], self.values)
+
+    def add(self, key: bytes, idx: int = 0, val=None):
+        if idx == len(key):
+            if val is None:
                 val = key
             self.values.add(val)
             return self
         ch = key[idx]
-        if(self.to[ch] is None):
+        if self.to[ch] is None:
             self.to[ch] = TRIE(front=self, ch=ch)
-        return self.to[ch].add(key, idx=idx+1, val=val)
-    
-    def find_longest(self, key:bytes, idx:int=0):
-        u:TRIE = self
-        ch:int = key[idx]
-        
-        while(u.to[ch] is not None):
+        return self.to[ch].add(key, idx=idx + 1, val=val)
+
+    def find_longest(self, key: bytes, idx: int = 0):
+        u: TRIE = self
+        ch: int = key[idx]
+
+        while u.to[ch] is not None:
             u = u.to[ch]
             idx += 1
-            if(u.values):
+            if u.values:
                 ret = idx, u, u.values
-            if(idx==len(key)):
+            if idx == len(key):
                 break
             ch = key[idx]
         return ret
 
-class TRIE_TOKENIZER():
+
+class TRIE_TOKENIZER:
     def __init__(self, file_name):
         self.idx2token = {}
-        sorted = [] # must be already sorted
+        sorted = []  # must be already sorted
         with open(file_name, "r", encoding="utf-8") as f:
             lines = f.readlines()
         for l in lines:
-            idx = int(l[:l.index(' ')])
-            x = eval(l[l.index(' '):l.rindex(' ')])
+            idx = int(l[: l.index(" ")])
+            x = eval(l[l.index(" ") : l.rindex(" ")])
             x = x.encode("utf-8") if isinstance(x, str) else x
             assert isinstance(x, bytes)
-            assert len(x) == int(l[l.rindex(' '):])
+            assert len(x) == int(l[l.rindex(" ") :])
             sorted += [x]
             self.idx2token[idx] = x
 
         self.token2idx = {}
-        for k,v in self.idx2token.items():
+        for k, v in self.idx2token.items():
             self.token2idx[v] = int(k)
 
         self.root = TRIE()
         for t, i in self.token2idx.items():
             _ = self.root.add(t, val=(t, i))
 
-    def encodeBytes(self, src:bytes):
-        idx:int = 0
+    def encodeBytes(self, src: bytes):
+        idx: int = 0
         tokens = []
-        while (idx < len(src)):
-            _idx:int = idx
+        while idx < len(src):
+            _idx: int = idx
             idx, _, values = self.root.find_longest(src, idx)
-            assert(idx != _idx)
-            _, token = next(iter(values))            
+            assert idx != _idx
+            _, token = next(iter(values))
             tokens.append(token)
         return tokens
 
     def decodeBytes(self, tokens):
-        return b''.join(map(lambda i: self.idx2token[i], tokens))
+        return b"".join(map(lambda i: self.idx2token[i], tokens))
 
     def encode(self, src):
         return self.encodeBytes(src.encode("utf-8"))
 
     def decode(self, tokens):
-        return self.decodeBytes(tokens).decode('utf-8')
+        return self.decodeBytes(tokens).decode("utf-8")
 
     def printTokens(self, tokens):
         for i in tokens:
             s = self.idx2token[i]
             try:
-                s = s.decode('utf-8')
+                s = s.decode("utf-8")
             except:
                 pass
-            print(f'{repr(s)}{i}', end=' ')
+            print(f"{repr(s)}{i}", end=" ")
         print()
+
 
 ########################################################################################################
 # Demo
 ########################################################################################################
 from hf_rwkv_tokenizer import Rwkv6Tokenizer
 
-TOKENIZER = RWKV_TOKENIZER('rwkv_vocab_v20230424.txt')
-TRIE_TEST = TRIE_TOKENIZER('rwkv_vocab_v20230424.txt')
-RWKV6_TOKENIZER = Rwkv6Tokenizer('rwkv_vocab_v20230424.txt', add_bos_token=False)
+TOKENIZER = RWKV_TOKENIZER("rwkv_vocab_v20230424.txt")
+TRIE_TEST = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+RWKV6_TOKENIZER = Rwkv6Tokenizer("rwkv_vocab_v20230424.txt", add_bos_token=False)
 
-src = '''起業家イーロン・マスク氏が創業した宇宙開発企業「スペースX（エックス）」の巨大新型ロケット「スターシップ」が20日朝、初めて打ち上げられたが、爆発した。
+src = """起業家イーロン・マスク氏が創業した宇宙開発企業「スペースX（エックス）」の巨大新型ロケット「スターシップ」が20日朝、初めて打ち上げられたが、爆発した。
 打ち上げは米テキサス州の東海岸で行われた。無人の試験で、負傷者はいなかった。
 打ち上げから2～3分後、史上最大のロケットが制御不能になり、まもなく搭載された装置で破壊された。
 マスク氏は、数カ月後に再挑戦すると表明した。
@@ -230,15 +241,15 @@ src = '''起業家イーロン・マスク氏が創業した宇宙開発企業�
 マスク氏は、「SpaceXチームの皆さん、スターシップのエキサイティングな試験打ち上げ、おめでとう！　数カ月後に行われる次の試験打ち上げに向けて、多くを学んだ」とツイートした。
 アメリカでのロケット打ち上げを認可する米連邦航空局（NASA）は、事故調査を監督するとした。広報担当者は、飛行中に機体が失われた場合の通常の対応だと述べた。
 マスク氏は打ち上げ前、期待値を下げようとしていた。発射台の設備を破壊せずに機体を打ち上げるだけでも「成功」だとしていた。
-その願いはかなった。スターシップは打ち上げ施設からどんどん上昇し、メキシコ湾の上空へと向かっていった。しかし1分もしないうち、すべてが計画通りに進んでいるのではないことが明らかになった。'''
+その願いはかなった。スターシップは打ち上げ施設からどんどん上昇し、メキシコ湾の上空へと向かっていった。しかし1分もしないうち、すべてが計画通りに進んでいるのではないことが明らかになった。"""
 
 print(src)
-print(f'\n{len(src)} chars')
+print(f"\n{len(src)} chars")
 tokens = TOKENIZER.encode(src)
 assert TOKENIZER.decode(tokens) == src
 print()
 TOKENIZER.printTokens(tokens)
-print(f'\n{len(tokens)} tokens\n')
+print(f"\n{len(tokens)} tokens\n")
 
 ########################################################################################################
 # Benchmark
@@ -246,7 +257,8 @@ print(f'\n{len(tokens)} tokens\n')
 
 src = src * 20
 src_len = len(src)
-print(f'Benchmark {src_len} tokens...')
+print(f"Benchmark {src_len} tokens...")
+
 
 def benchmark(XXX):
     min_t = 1e100
@@ -254,14 +266,15 @@ def benchmark(XXX):
         t_begin = time.time_ns()
         tokens = XXX.encode(src)
         min_t = min(time.time_ns() - t_begin, min_t) + 1
-    print('Encode', round(src_len / min_t * 1e3, 3), 'MB/s')
+    print("Encode", round(src_len / min_t * 1e3, 3), "MB/s")
 
     min_t = 1e100
     for i in range(10):
         t_begin = time.time_ns()
         sss = XXX.decode(tokens)
         min_t = min(time.time_ns() - t_begin, min_t) + 1
-    print('Decode', round(src_len / min_t * 1e3, 3), 'MB/s')
+    print("Decode", round(src_len / min_t * 1e3, 3), "MB/s")
+
 
 def benchmark2(XXX):
     min_t = 1e100
@@ -269,14 +282,15 @@ def benchmark2(XXX):
         t_begin = time.time_ns()
         tokens = XXX(src)
         min_t = min(time.time_ns() - t_begin, min_t) + 1
-    print('Encode', round(src_len / min_t * 1e3, 3), 'MB/s')
+    print("Encode", round(src_len / min_t * 1e3, 3), "MB/s")
 
     min_t = 1e100
     for i in range(10):
         t_begin = time.time_ns()
         sss = XXX.decode(tokens["input_ids"])
         min_t = min(time.time_ns() - t_begin, min_t) + 1
-    print('Decode', round(src_len / min_t * 1e3, 3), 'MB/s')
+    print("Decode", round(src_len / min_t * 1e3, 3), "MB/s")
+
 
 benchmark(TOKENIZER)
 benchmark(TRIE_TEST)
@@ -285,25 +299,25 @@ benchmark2(RWKV6_TOKENIZER)
 # Unit Test
 ########################################################################################################
 
-print('Unit test...')
+print("Unit test...")
 
-QQQ = ['', ' ', 'Õ\U000683b8', b'\xe6\xaa\x81'.decode('utf-8')]
+QQQ = ["", " ", "Õ\U000683b8", b"\xe6\xaa\x81".decode("utf-8")]
 
 for TRIAL in range(500):
-    x = ''
+    x = ""
     for xx in [
-        ['0',' '],
-        ['0','1'],
-        ['0','1',' '],
-        ['0','1',' ','00','11','  ','000','111','   '],
-        list('01 \n\r\t,.;!?:\'\"-=你好')
+        ["0", " "],
+        ["0", "1"],
+        ["0", "1", " "],
+        ["0", "1", " ", "00", "11", "  ", "000", "111", "   "],
+        list("01 \n\r\t,.;!?:'\"-=你好"),
     ]:
         for i in range(256):
             x += random.choice(xx)
     QQQ += [x]
 
 for i in range(5000):
-    QQQ += [' ' * i]
+    QQQ += [" " * i]
 
 for TRIAL in range(5000):
     x = chr(random.randrange(0, 256))
@@ -319,7 +333,8 @@ for TRIAL in range(99999):
     except:
         pass
 
-QQQ += ['''
+QQQ += [
+    """
 UTF-8 decoder capability and stress test
 ----------------------------------------
 
@@ -1019,17 +1034,18 @@ Garifuna: (NEEDED)
 Gullah: (NEEDED)
 Lojban: mi kakne le nu citka le blaci .iku'i le se go'i na xrani mi
 Nórdicg: Ljœr ye caudran créneþ ý jor cẃran.
-''']
-        
+"""
+]
+
 for q in QQQ:
     tokens = TOKENIZER.encode(q)
     if q != TOKENIZER.decode(tokens):
-        print('ERROR', q)
+        print("ERROR", q)
     if str(tokens) != str(TRIE_TEST.encode(q)):
-        print('ERROR', q)
+        print("ERROR", q)
     # also test RWKV6 tokenizer
     if str(tokens) != str(RWKV6_TOKENIZER(q)["input_ids"]):
         print(str(tokens), str(RWKV6_TOKENIZER(q)["input_ids"]))
         break
 
-print('All OK\n')
+print("All OK\n")

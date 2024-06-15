@@ -30,8 +30,9 @@ logger = logging.get_logger(__name__)
 
 class TRIE:
     __slots__ = tuple("ch,to,values,front".split(","))
-    to:list
-    values:set
+    to: list
+    values: set
+
     def __init__(self, front=None, ch=None):
         self.ch = ch
         self.to = [None for ch in range(256)]
@@ -41,73 +42,74 @@ class TRIE:
     def __repr__(self):
         fr = self
         ret = []
-        while(fr!=None):
-            if(fr.ch!=None):
+        while fr != None:
+            if fr.ch != None:
                 ret.append(fr.ch)
             fr = fr.front
-        return "<TRIE %s %s>"%(ret[::-1], self.values)
-    
-    def add(self, key:bytes, idx:int=0, val=None):
-        if(idx == len(key)):
-            if(val is None):
+        return "<TRIE %s %s>" % (ret[::-1], self.values)
+
+    def add(self, key: bytes, idx: int = 0, val=None):
+        if idx == len(key):
+            if val is None:
                 val = key
             self.values.add(val)
             return self
         ch = key[idx]
-        if(self.to[ch] is None):
+        if self.to[ch] is None:
             self.to[ch] = TRIE(front=self, ch=ch)
-        return self.to[ch].add(key, idx=idx+1, val=val)
-    
-    def find_longest(self, key:bytes, idx:int=0):
-        u:TRIE = self
-        ch:int = key[idx]
-        
-        while(u.to[ch] is not None):
+        return self.to[ch].add(key, idx=idx + 1, val=val)
+
+    def find_longest(self, key: bytes, idx: int = 0):
+        u: TRIE = self
+        ch: int = key[idx]
+
+        while u.to[ch] is not None:
             u = u.to[ch]
             idx += 1
-            if(u.values):
+            if u.values:
                 ret = idx, u, u.values
-            if(idx==len(key)):
+            if idx == len(key):
                 break
             ch = key[idx]
         return ret
 
-class RWKV_TOKENIZER():
+
+class RWKV_TOKENIZER:
     def __init__(self, file_name):
         self.idx2token = {}
-        sorted = [] # must be already sorted
+        sorted = []  # must be already sorted
         with open(file_name, "r", encoding="utf-8") as f:
             lines = f.readlines()
         for l in lines:
-            idx = int(l[:l.index(' ')])
-            x = eval(l[l.index(' '):l.rindex(' ')])
+            idx = int(l[: l.index(" ")])
+            x = eval(l[l.index(" ") : l.rindex(" ")])
             x = x.encode("utf-8") if isinstance(x, str) else x
             assert isinstance(x, bytes)
-            assert len(x) == int(l[l.rindex(' '):])
+            assert len(x) == int(l[l.rindex(" ") :])
             sorted += [x]
             self.idx2token[idx] = x
 
         self.token2idx = {}
-        for k,v in self.idx2token.items():
+        for k, v in self.idx2token.items():
             self.token2idx[v] = int(k)
 
         self.root = TRIE()
         for t, i in self.token2idx.items():
             _ = self.root.add(t, val=(t, i))
 
-    def encodeBytes(self, src:bytes):
-        idx:int = 0
+    def encodeBytes(self, src: bytes):
+        idx: int = 0
         tokens = []
-        while (idx < len(src)):
-            _idx:int = idx
+        while idx < len(src):
+            _idx: int = idx
             idx, _, values = self.root.find_longest(src, idx)
-            assert(idx != _idx)
-            _, token = next(iter(values))            
+            assert idx != _idx
+            _, token = next(iter(values))
             tokens.append(token)
         return tokens
 
     def decodeBytes(self, tokens):
-        return b''.join(map(lambda i: self.idx2token[i], tokens))
+        return b"".join(map(lambda i: self.idx2token[i], tokens))
 
     def encode(self, src):
         if isinstance(src, str):
@@ -116,7 +118,7 @@ class RWKV_TOKENIZER():
             return [self.encodeBytes(s.encode("utf-8")) for s in src]
 
     def decode(self, tokens):
-        return [self.decodeBytes(batch).decode('utf-8') for batch in tokens]    
+        return [self.decodeBytes(batch).decode("utf-8") for batch in tokens]
         # try:
         #     return self.decodeBytes(tokens).decode('utf-8')
         # except:
@@ -126,17 +128,19 @@ class RWKV_TOKENIZER():
         for i in tokens:
             s = self.idx2token[i]
             try:
-                s = s.decode('utf-8')
+                s = s.decode("utf-8")
             except:
                 pass
-            print(f'{repr(s)}{i}', end=' ')
+            print(f"{repr(s)}{i}", end=" ")
         print()
 
-class Rwkv6Tokenizer(PreTrainedTokenizer):
 
+class Rwkv6Tokenizer(PreTrainedTokenizer):
     model_input_names = ["input_ids", "attention_mask"]
 
-    def __init__(self, vocab_file, bos_token="<s>", eos_token="<s>", unk_token="<s>", **kwargs):
+    def __init__(
+        self, vocab_file, bos_token="<s>", eos_token="<s>", unk_token="<s>", **kwargs
+    ):
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 f"Can't find a vocabulary file at path '{vocab_file}'. To load the vocabulary from a Google pretrained"
@@ -155,7 +159,9 @@ class Rwkv6Tokenizer(PreTrainedTokenizer):
         self.encoder = vocab
         self.decoder = {v: k for k, v in vocab.items()}
         self._added_tokens_decoder = {0: AddedToken(str(bos_token))}
-        super().__init__(bos_token=bos_token, eos_token=eos_token, unk_token=unk_token, **kwargs)
+        super().__init__(
+            bos_token=bos_token, eos_token=eos_token, unk_token=unk_token, **kwargs
+        )
 
     @property
     def vocab_size(self):
@@ -182,21 +188,28 @@ class Rwkv6Tokenizer(PreTrainedTokenizer):
 
     def convert_tokens_to_string(self, tokens):
         """Converts a sequence of tokens (bytes) in a single string. Additional tokens are encoded to bytes"""
-        out_string = b"".join([k.encode(errors="replace") if isinstance(k, str) else k for k in tokens]).decode(
-            "utf-8"
-        )
+        out_string = b"".join(
+            [k.encode(errors="replace") if isinstance(k, str) else k for k in tokens]
+        ).decode("utf-8")
         return out_string
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+    def save_vocabulary(
+        self, save_directory: str, filename_prefix: Optional[str] = None
+    ) -> Tuple[str]:
         index = 0
         if os.path.isdir(save_directory):
             vocab_file = os.path.join(
-                save_directory, (filename_prefix + "-" if filename_prefix else "") + "vocab.txt"
+                save_directory,
+                (filename_prefix + "-" if filename_prefix else "") + "vocab.txt",
             )
         else:
-            vocab_file = (filename_prefix + "-" if filename_prefix else "") + save_directory
+            vocab_file = (
+                filename_prefix + "-" if filename_prefix else ""
+            ) + save_directory
         with open(vocab_file, "w", encoding="utf-8") as writer:
-            for token, token_index in sorted(self.encoder.items(), key=lambda kv: kv[1]):
+            for token, token_index in sorted(
+                self.encoder.items(), key=lambda kv: kv[1]
+            ):
                 if index != token_index:
                     logger.warning(
                         f"Saving vocabulary to {vocab_file}: vocabulary indices are not consecutive."
@@ -221,7 +234,10 @@ class Rwkv6Tokenizer(PreTrainedTokenizer):
         return output + bos_token_ids + token_ids_1
 
     def get_special_tokens_mask(
-        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None, already_has_special_tokens: bool = False
+        self,
+        token_ids_0: List[int],
+        token_ids_1: Optional[List[int]] = None,
+        already_has_special_tokens: bool = False,
     ) -> List[int]:
         """
         Retrieves sequence ids from a token list that has no special tokens added. This method is called when adding
@@ -240,12 +256,16 @@ class Rwkv6Tokenizer(PreTrainedTokenizer):
         """
         if already_has_special_tokens:
             return super().get_special_tokens_mask(
-                token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=True
+                token_ids_0=token_ids_0,
+                token_ids_1=token_ids_1,
+                already_has_special_tokens=True,
             )
 
         if not self.add_bos_token:
             return super().get_special_tokens_mask(
-                token_ids_0=token_ids_0, token_ids_1=token_ids_1, already_has_special_tokens=False
+                token_ids_0=token_ids_0,
+                token_ids_1=token_ids_1,
+                already_has_special_tokens=False,
             )
 
         if token_ids_1 is None:

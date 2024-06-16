@@ -1,5 +1,5 @@
 import torch
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from hf_rwkv_tokenizer import Rwkv6Tokenizer
 
 
@@ -27,10 +27,10 @@ model = AutoModelForCausalLM.from_pretrained(
 ).to(torch.float32)
 
 
-# tokenizer = AutoTokenizer.from_pretrained("RWKV/rwkv-6-world-7b", trust_remote_code=True, padding_side='left', pad_token="<s>")
 # NOTE: Rwkv6Tokenizer is a custom tokenizer class that extends the AutoTokenizer class
-tokenizer = Rwkv6Tokenizer("rwkv_vocab_v20230424.txt")
-
+# You can use one of the two lines below to initialize the tokenizer, they are equivalent
+# tokenizer = Rwkv6Tokenizer("rwkv-6-1.6b/rwkv_vocab_v20230424.txt")
+tokenizer = AutoTokenizer.from_pretrained("./rwkv-6-tokenizer", trust_remote_code=True)
 
 text = """I was so happy to see him that I almost sobbed his name. Eli stiffened and let out a hiss. “Mohiri!” Fear crept into his voice, and my dazed mind wondered what on earth scared a vampire. Nikolas chuckled, and I felt a tremor run through my captor. “I see there is no need for"""
 prompt = text
@@ -39,7 +39,7 @@ inputs = tokenizer(prompt, return_tensors="pt")
 output = model.generate(
     inputs["input_ids"],
     max_new_tokens=4,
-    do_sample=True,
+    do_sample=False,
     # temperature=1.0,
     # top_p=0.3,
     # top_k=0,

@@ -2,7 +2,9 @@
 
 ## Setup
 
-1. Download the RWKV weight to a local folder, e.g. `./weights/RWKV/rwkv-6-world-1b6`.
+1. Download the RWKV weight to a local folder, e.g. `./weights/RWKV/rwkv-6-world-1b6`. Link:
+    - [RWKV/rwkv-6-world-1b6](https://huggingface.co/RWKV/rwkv-6-world-1b6/tree/main)
+    
 2. Copy and paste all files in `./rwkv-6-tokenizer` to the folder `./weights/RWKV/rwkv-6-world-1b6`, replace the existing files. This will overwrite the tokenizer files with the correct ones.
 3. Install the most current version of `lm-evaluation-harness` by running the following command:
 

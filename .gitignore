@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 rwkv-6-1.6b/
+rwkv-6-world-7b/
 pytorch_model.bin
 modeling_rwkv6.py
 generation_config.json

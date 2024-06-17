@@ -227,11 +227,11 @@ class TRIE_TOKENIZER:
 ########################################################################################################
 # Demo
 ########################################################################################################
-from hf_rwkv_tokenizer import Rwkv6Tokenizer
+from rwkv_6_tokenizer.hf_rwkv_tokenizer import Rwkv6Tokenizer
 
-TOKENIZER = RWKV_TOKENIZER("rwkv_vocab_v20230424.txt")
-TRIE_TEST = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
-RWKV6_TOKENIZER = Rwkv6Tokenizer("rwkv_vocab_v20230424.txt", add_bos_token=False)
+TOKENIZER = RWKV_TOKENIZER("rwkv_6_tokenizer/rwkv_vocab_v20230424.txt")
+TRIE_TEST = TRIE_TOKENIZER("rwkv_6_tokenizer/rwkv_vocab_v20230424.txt")
+RWKV6_TOKENIZER = Rwkv6Tokenizer("rwkv_6_tokenizer/rwkv_vocab_v20230424.txt", add_bos_token=False)
 
 src = """起業家イーロン・マスク氏が創業した宇宙開発企業「スペースX（エックス）」の巨大新型ロケット「スターシップ」が20日朝、初めて打ち上げられたが、爆発した。
 打ち上げは米テキサス州の東海岸で行われた。無人の試験で、負傷者はいなかった。
